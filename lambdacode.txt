@@ -1,0 +1,36 @@
+import boto3
+import base64
+from io import BytesIO
+from datetime import datetime
+
+s3 = boto3.client('s3')
+dynamodb = boto3.client('dynamodb')
+
+def lambda_handler(event, contexts):
+    try:
+        file_name = event['fileName']
+        file_data = event['fileData'].split(',')[1]
+        
+        # Upload file to S3
+        s3.upload_fileobj(
+            Fileobj=BytesIO(base64.b64decode(file_data)),
+            Bucket='bucket-1760',
+            Key=file_name
+        )
+        
+        # Store file details in DynamoDB
+        timestamp = datetime.now().isoformat()
+        dynamodb.put_item(
+            TableName='table-1760',
+            Item={
+                'fileId': {'S': file_name},
+                's3Location': {'S': f'https://bucket-1760.s3.us-east-1.amazonaws.com/{file_name}'},
+                'uploadedAt': {'S': timestamp}
+            }
+        )
+        
+        return {'message': 'File uploaded successfully'}
+    
+    except Exception as e:
+        print("Error:", e)
+        raise Exception('Failed to upload file')
